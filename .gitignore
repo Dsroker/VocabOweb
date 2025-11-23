@@ -1,0 +1,9 @@
+# Dependencies
+node_modules/
+
+# Environment variables (Protects your API Key)
+.env
+
+# System files
+.DS_Store
+Thumbs.db
