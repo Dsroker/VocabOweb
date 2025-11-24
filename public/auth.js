@@ -24,6 +24,16 @@ const displayName = document.getElementById('display-name');
 const navName = document.getElementById('user-name-display');
 const logoutBtn = document.getElementById('logout-btn');
 
+// --- HELPER: RESET UI TO ZERO ---
+// We call this to wipe old data before loading new data
+function resetProgressUI() {
+    document.getElementById('total-words-count').innerText = "0";
+    document.getElementById('avg-score').innerText = "0";
+    document.getElementById('word-history-body').innerHTML = `
+        <tr><td colspan="3" class="p-4 text-center italic text-gray-500">No words learned yet.</td></tr>
+    `;
+}
+
 // Auth State Observer
 onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -32,13 +42,20 @@ onAuthStateChanged(auth, (user) => {
         displayName.innerText = user.displayName || user.email;
         navName.innerText = user.displayName || "User";
         logoutBtn.classList.remove('hidden');
-        window.currentUser = user; // Global access
-        window.db = db; // Global access
+        window.currentUser = user; 
+        window.db = db; 
+        
+        // 1. WIPE OLD DATA FIRST
+        resetProgressUI();
+        // 2. LOAD NEW DATA
         loadProgress();
     } else {
-        showSection('auth'); // Force login
+        showSection('auth'); 
         logoutBtn.classList.add('hidden');
         window.currentUser = null;
+        
+        // 3. WIPE DATA ON LOGOUT
+        resetProgressUI();
     }
 });
 
@@ -58,7 +75,12 @@ document.getElementById('auth-form').addEventListener('submit', (e) => {
 });
 
 // Logout
-logoutBtn.addEventListener('click', () => signOut(auth));
+logoutBtn.addEventListener('click', () => {
+    // Force a page reload on logout to verify complete cleanup (Best practice for simple apps)
+    signOut(auth).then(() => {
+        window.location.reload();
+    });
+});
 
 // Save Progress Helper
 window.saveProgress = async (type, data) => {
@@ -67,18 +89,16 @@ window.saveProgress = async (type, data) => {
     
     try {
         if (type === 'word') {
-            // 1. Create a tidy object for history
             const wordEntry = {
                 word: data.word,
-                definition: data.definition, // Saving definition for revision
-                timestamp: new Date().toISOString(), // For sorting
-                displayDate: new Date().toLocaleDateString() // For display
+                definition: data.definition, 
+                timestamp: new Date().toISOString(), 
+                displayDate: new Date().toLocaleDateString()
             };
 
-            // 2. Save both the Count AND the History Entry
             await setDoc(userRef, { 
                 wordsLearned: increment(1),
-                wordHistory: arrayUnion(wordEntry) // Adds to the list
+                wordHistory: arrayUnion(wordEntry) 
             }, { merge: true });
 
         } else if (type === 'quiz') {
@@ -87,12 +107,12 @@ window.saveProgress = async (type, data) => {
                 await setDoc(userRef, { quizScores: arrayUnion(safeScore) }, { merge: true });
             }
         }
-        // Refresh UI immediately
         loadProgress();
     } catch (e) {
         console.error("Error saving progress", e);
     }
 };
+
 async function loadProgress() {
     if (!window.currentUser) return;
     
@@ -102,7 +122,7 @@ async function loadProgress() {
     if (docSnap.exists()) {
         const data = docSnap.data();
         
-        // 1. Stats Logic (Existing)
+        // 1. Stats Logic
         const wordsCount = Number(data.wordsLearned);
         document.getElementById('total-words-count').innerText = isNaN(wordsCount) ? 0 : wordsCount;
         
@@ -112,14 +132,10 @@ async function loadProgress() {
             document.getElementById('avg-score').innerText = Math.round(avg);
         }
 
-        // 2. NEW: Render History Table
+        // 2. History Table
         const tbody = document.getElementById('word-history-body');
-        
         if (data.wordHistory && Array.isArray(data.wordHistory) && data.wordHistory.length > 0) {
-            tbody.innerHTML = ''; // Clear "No words" message
-            
-            // Reverse to show newest words first
-            // We use [...spread] to avoid mutating the original array
+            tbody.innerHTML = ''; 
             [...data.wordHistory].reverse().forEach(entry => {
                 const row = document.createElement('tr');
                 row.className = "border-b border-purple-50 hover:bg-purple-50/50 transition";
@@ -131,5 +147,8 @@ async function loadProgress() {
                 tbody.appendChild(row);
             });
         }
+    } else {
+        // IMPORTANT: If user exists in Auth but not DB (Brand new user), KEEP UI CLEAN
+        resetProgressUI();
     }
 }
