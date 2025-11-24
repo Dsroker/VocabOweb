@@ -303,17 +303,3 @@ function closeSearch() {
     document.getElementById('search-results-modal').classList.add('hidden');
     document.getElementById('search-results-modal').classList.remove('flex');
 }
-/* --- SPLASH SCREEN LOGIC --- */
-document.addEventListener('DOMContentLoaded', () => {
-    // Wait 4.5 seconds, then fade out
-    setTimeout(() => {
-        const splash = document.getElementById('splash-screen');
-        splash.style.opacity = '0'; // Start fade out CSS transition
-        
-        // Wait for fade out to finish (0.7s), then remove from DOM
-        setTimeout(() => {
-            splash.style.display = 'none';
-        }, 700);
-        
-    }, 4500); // 4.5 seconds total display time
-});
