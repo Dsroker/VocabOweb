@@ -57,7 +57,30 @@
         <button id="logout-btn" class="bg-white/10 p-2 rounded-full hover:bg-white/20 hidden">
             <i class="fa-solid fa-sign-out-alt"></i>
         </button>
-        <div id="profile-icon" class="w-8 h-8 rounded-full bg-gray-500"></div>
+            <div class="hidden md:flex items-center gap-4 relative">
+    <span id="user-name-display" class="text-sm font-semibold text-purple-200">Guest</span>
+    
+    <button id="profile-dropdown-btn" class="focus:outline-none transition-transform active:scale-95">
+        <div id="profile-icon" class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 border-2 border-white/20 shadow-lg flex items-center justify-center text-white font-bold text-lg">
+            </div>
+    </button>
+
+    <div id="profile-dropdown-menu" class="hidden absolute right-0 top-12 w-48 bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-purple-100 overflow-hidden z-50 transform origin-top-right transition-all duration-200">
+        <div class="px-4 py-3 border-b border-gray-100 bg-purple-50/50">
+            <p class="text-xs text-gray-500 uppercase tracking-wider font-bold">Signed in as</p>
+            <p id="dropdown-email" class="text-sm font-bold text-[#1a103c] truncate">user@example.com</p>
+        </div>
+
+        <div class="py-1">
+            <button onclick="showSection('progress')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-xs"></i> My Progress
+            </button>
+            <button id="logout-btn-dropdown" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2">
+                <i class="fa-solid fa-sign-out-alt text-xs"></i> Log Out
+            </button>
+        </div>
+    </div>
+</div>
     </div>
 </nav>
 

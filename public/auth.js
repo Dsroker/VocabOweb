@@ -38,29 +38,48 @@ function resetProgressUI() {
 // Auth State Observer
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        authSection.classList.add('hidden');
-        homeSection.classList.remove('hidden');
-        displayName.innerText = user.displayName || user.email.split('@')[0];
-        navName.innerText = user.displayName || "User";
-        logoutBtn.classList.remove('hidden');
-        window.currentUser = user; 
-        window.db = db; 
-        resetProgressUI();
-        loadProgress();
+        // Show Home, Hide Auth
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('home-section').classList.remove('hidden');
+        document.getElementById('logout-btn').classList.remove('hidden'); // Keep mobile logout
+        
+        // Update Global State
+        window.currentUser = user;
+        window.db = db;
+
+        // --- UPDATE PROFILE UI ---
+        const displayNameText = user.displayName || user.email.split('@')[0];
+        document.getElementById('display-name').innerText = displayNameText;
+        document.getElementById('user-name-display').innerText = displayNameText;
+
+        // Set Initials in the colored circle (e.g. "Y" for Yash)
+        const initial = displayNameText.charAt(0).toUpperCase();
+        if(document.getElementById('profile-icon')) {
+            document.getElementById('profile-icon').innerText = initial;
+        }
+
+        // Set Email inside the Dropdown
+        if(document.getElementById('dropdown-email')) {
+            document.getElementById('dropdown-email').innerText = user.email;
+        }
+
+        // Load Data
+        if(typeof resetProgressUI === 'function') resetProgressUI();
+        if(typeof loadProgress === 'function') loadProgress();
+
     } else {
-        // If coming from a logout, ensure we show auth section
+        // Handle Logout State
         document.getElementById('auth-section').classList.remove('hidden');
         ['home-section', 'learn-section', 'quiz-section', 'grammar-section', 'progress-section'].forEach(id => {
             const el = document.getElementById(id);
             if(el) el.classList.add('hidden');
         });
-        
-        logoutBtn.classList.add('hidden');
+        document.getElementById('logout-btn').classList.add('hidden');
         window.currentUser = null;
-        resetProgressUI();
+        
+        if(typeof resetProgressUI === 'function') resetProgressUI();
     }
 });
-
 // Google Login
 document.getElementById('google-login-btn').addEventListener('click', () => {
     signInWithPopup(auth, provider).catch(console.error);
@@ -113,13 +132,6 @@ document.getElementById('auth-form').addEventListener('submit', (e) => {
                 alert("Signup failed: " + error.message);
             });
     }
-});
-
-// Logout
-logoutBtn.addEventListener('click', () => {
-    signOut(auth).then(() => {
-        window.location.reload();
-    });
 });
 
 // Save Progress Helper
@@ -192,4 +204,31 @@ async function loadProgress() {
             });
         }
     }
+}
+// 1. Toggle Dropdown
+const profileBtn = document.getElementById('profile-dropdown-btn');
+const dropdownMenu = document.getElementById('profile-dropdown-menu');
+
+if (profileBtn && dropdownMenu) {
+    profileBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Stop click from bubbling up
+        dropdownMenu.classList.toggle('hidden');
+    });
+
+    // 2. Close Dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!profileBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+            dropdownMenu.classList.add('hidden');
+        }
+    });
+}
+
+// 3. Connect Dropdown Logout Button
+const dropdownLogout = document.getElementById('logout-btn-dropdown');
+if (dropdownLogout) {
+    dropdownLogout.addEventListener('click', () => {
+        signOut(auth).then(() => {
+            window.location.reload();
+        });
+    });
 }
