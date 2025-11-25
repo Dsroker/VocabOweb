@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -25,13 +25,14 @@ const navName = document.getElementById('user-name-display');
 const logoutBtn = document.getElementById('logout-btn');
 
 // --- HELPER: RESET UI TO ZERO ---
-// We call this to wipe old data before loading new data
 function resetProgressUI() {
-    document.getElementById('total-words-count').innerText = "0";
-    document.getElementById('avg-score').innerText = "0";
-    document.getElementById('word-history-body').innerHTML = `
-        <tr><td colspan="3" class="p-4 text-center italic text-gray-500">No words learned yet.</td></tr>
-    `;
+    if(document.getElementById('total-words-count')) {
+        document.getElementById('total-words-count').innerText = "0";
+        document.getElementById('avg-score').innerText = "0";
+        document.getElementById('word-history-body').innerHTML = `
+            <tr><td colspan="3" class="p-4 text-center italic text-gray-500">No words learned yet.</td></tr>
+        `;
+    }
 }
 
 // Auth State Observer
@@ -39,22 +40,23 @@ onAuthStateChanged(auth, (user) => {
     if (user) {
         authSection.classList.add('hidden');
         homeSection.classList.remove('hidden');
-        displayName.innerText = user.displayName || user.email;
+        displayName.innerText = user.displayName || user.email.split('@')[0];
         navName.innerText = user.displayName || "User";
         logoutBtn.classList.remove('hidden');
         window.currentUser = user; 
         window.db = db; 
-        
-        // 1. WIPE OLD DATA FIRST
         resetProgressUI();
-        // 2. LOAD NEW DATA
         loadProgress();
     } else {
-        showSection('auth'); 
+        // If coming from a logout, ensure we show auth section
+        document.getElementById('auth-section').classList.remove('hidden');
+        ['home-section', 'learn-section', 'quiz-section', 'grammar-section', 'progress-section'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.classList.add('hidden');
+        });
+        
         logoutBtn.classList.add('hidden');
         window.currentUser = null;
-        
-        // 3. WIPE DATA ON LOGOUT
         resetProgressUI();
     }
 });
@@ -64,19 +66,57 @@ document.getElementById('google-login-btn').addEventListener('click', () => {
     signInWithPopup(auth, provider).catch(console.error);
 });
 
-// Email Login
+// --- NEW: LOGIN / SIGNUP TOGGLE LOGIC ---
+let isLoginMode = true;
+
+document.getElementById('toggle-auth-mode').addEventListener('click', () => {
+    isLoginMode = !isLoginMode;
+    const title = document.querySelector('#auth-section h2');
+    const subtext = document.querySelector('#auth-section p');
+    const btn = document.getElementById('login-btn');
+    const toggle = document.getElementById('toggle-auth-mode');
+
+    if (isLoginMode) {
+        title.innerText = "Welcome Back";
+        subtext.innerText = "Login to continue learning";
+        btn.innerText = "Login";
+        toggle.innerText = "Need an account? Sign Up";
+    } else {
+        title.innerText = "Create Account";
+        subtext.innerText = "Join Vocabo today";
+        btn.innerText = "Sign Up";
+        toggle.innerText = "Have an account? Login";
+    }
+});
+
+// Email Auth Handler (Handles both Login and Signup)
 document.getElementById('auth-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value;
     const pass = document.getElementById('password').value;
-    signInWithEmailAndPassword(auth, email, pass).catch((error) => {
-        alert("Login failed: " + error.message);
-    });
+    
+    if (isLoginMode) {
+        // LOGIN
+        signInWithEmailAndPassword(auth, email, pass).catch((error) => {
+            alert("Login failed: " + error.message);
+        });
+    } else {
+        // SIGN UP
+        createUserWithEmailAndPassword(auth, email, pass)
+            .then((userCredential) => {
+                // Optional: Set a default display name based on email
+                updateProfile(userCredential.user, {
+                    displayName: email.split('@')[0]
+                });
+            })
+            .catch((error) => {
+                alert("Signup failed: " + error.message);
+            });
+    }
 });
 
 // Logout
 logoutBtn.addEventListener('click', () => {
-    // Force a page reload on logout to verify complete cleanup (Best practice for simple apps)
     signOut(auth).then(() => {
         window.location.reload();
     });
@@ -124,17 +164,21 @@ async function loadProgress() {
         
         // 1. Stats Logic
         const wordsCount = Number(data.wordsLearned);
-        document.getElementById('total-words-count').innerText = isNaN(wordsCount) ? 0 : wordsCount;
-        
+        if(document.getElementById('total-words-count')) {
+             document.getElementById('total-words-count').innerText = isNaN(wordsCount) ? 0 : wordsCount;
+        }
+       
         if (data.quizScores && Array.isArray(data.quizScores) && data.quizScores.length > 0) {
             const sum = data.quizScores.reduce((acc, val) => acc + Number(val), 0);
             const avg = sum / data.quizScores.length;
-            document.getElementById('avg-score').innerText = Math.round(avg);
+            if(document.getElementById('avg-score')) {
+                document.getElementById('avg-score').innerText = Math.round(avg);
+            }
         }
 
         // 2. History Table
         const tbody = document.getElementById('word-history-body');
-        if (data.wordHistory && Array.isArray(data.wordHistory) && data.wordHistory.length > 0) {
+        if (tbody && data.wordHistory && Array.isArray(data.wordHistory) && data.wordHistory.length > 0) {
             tbody.innerHTML = ''; 
             [...data.wordHistory].reverse().forEach(entry => {
                 const row = document.createElement('tr');
@@ -147,8 +191,5 @@ async function loadProgress() {
                 tbody.appendChild(row);
             });
         }
-    } else {
-        // IMPORTANT: If user exists in Auth but not DB (Brand new user), KEEP UI CLEAN
-        resetProgressUI();
     }
 }
