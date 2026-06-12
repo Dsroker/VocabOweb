@@ -52,7 +52,7 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById('display-name').innerText = displayNameText;
         document.getElementById('user-name-display').innerText = displayNameText;
 
-        // Set Initials in the colored circle (e.g. "Y" for Yash)
+        // Set Initials in the colored circle (e.g. "D" for Devendra)
         const initial = displayNameText.charAt(0).toUpperCase();
         if(document.getElementById('profile-icon')) {
             document.getElementById('profile-icon').innerText = initial;
